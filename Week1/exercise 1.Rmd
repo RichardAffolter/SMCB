@@ -1,0 +1,174 @@
+---
+title: "Exercise 1"
+author: "Richard Affolter"
+date: "25 02 2021"
+output: pdf_document
+---
+
+## Problem 1: Conditional independence and BNs
+
+- We can check for conditional independence $A \perp B \mid C$ if $P(A,B \mid C) = P(A\mid C)\ P(B\mid C)$.
+
+- We can check for marginal independence by marginalizing with respect to C:  
+$A \mid B$ if  $P(A,B) = \sum\limits_C P(A,B,C) = P(A)\ P(B)$
+
+### a)
+
+$$
+P(A,B,C) = P(A \mid C)\ P(B \mid C)\ P(C)
+$$
+
+$$
+\begin{aligned}
+P(A,B \mid C) &= \frac{P(A,B,C)}{P(C)} \\
+&= P(A \mid C)\ P(B \mid C) \\
+\Rightarrow A \perp B \mid C
+\end{aligned}
+$$
+
+
+
+$$
+\begin{aligned}
+\sum\limits_C P(A,B,C) = \sum\limits_C P(A \mid C)\ P(B \mid C)\ P(C) \\
+\text{in general this does not factorize to the product } P(A)\ P(B)
+\end{aligned}
+$$
+
+
+Therefore for this network we have conditional independence but no marginal independence.
+
+### b)
+$$
+P(A,B,C) = P(A)\ P(B)\ P(C \mid A,B)
+$$
+
+
+$$
+\begin{aligned}
+P(A,B \mid C) &= \frac{P(A,B,C)}{P(C)} \\
+&= \frac{P(A)\ P(B)\ P(C \mid A,B)}{P(C)} \\
+&\neq P(A\mid C)\ P(B\mid C)
+\end{aligned}
+$$
+
+
+$$
+\begin{aligned}
+&\sum\limits_C P(A,B,C)\\
+&= \sum\limits_C P(A)\ P(B)\ P(C \mid A,B) \\
+&= P(A)\ P(B) \sum\limits_C  P(C \mid A,B) \\
+&= P(A)\ P(B) \\
+&\Rightarrow A \mid B
+\end{aligned}
+$$
+
+Therefore for this network we have marginal independence but  no conditional independence.
+
+## Problem 2: Markov blanket
+
+$$\text{MB}(D) = \{B,F,E,G,C\}$$
+
+$$
+\begin{aligned}
+&P(D \mid A,B,C,E,F,G)\\ &= \frac{P(A,B,C,D,E,F,G)}{P(A,B,C,E,F,G)}\\
+&= \frac{P(A,B,C,D,E,F,G)}{\sum\limits_D P(A,B,C,D,E,F,G)} \\
+&=\frac{P(A)P(B)P(F)P(E \mid A)P(D \mid B,F)P(G \mid E,D)P(C \mid D)}
+{\sum\limits_D P(A)P(B)P(F)P(E \mid A)P(D \mid B,F)P(G \mid E,D)P(C \mid D)} \\
+&=\frac{P(A)P(B)P(F)P(E \mid A)P(D \mid B,F)P(G \mid E,D)P(C \mid D)}
+{P(A)P(B)P(F)P(E \mid A) \sum\limits_D  P(D \mid B,F)P(G \mid E,D)P(C \mid D)} \\
+&=\frac{P(D \mid B,F)P(G \mid E,D)P(C \mid D)}
+{\sum\limits_D  P(D \mid B,F)P(G \mid E,D)P(C \mid D)}
+\end{aligned}
+$$
+
+$$
+\begin{aligned}
+P(D \mid \text{MB}(D)) &= P(D \mid B,F,E,G,C)\\
+&= \frac{P(B,C,D,E,F,G)}{P(B,C,E,F,G)} \\
+&= \frac{\sum\limits_AP(A,B,C,D,E,F,G)}
+{\sum\limits_A \sum\limits_D P(A,B,C,D,E,F,G)} \\
+&= \frac{\sum\limits_A P(A)P(B)P(F)P(E \mid A)P(D \mid B,F)P(G \mid E,D)P(C \mid D)}
+{\sum\limits_A \sum\limits_D P(A)P(B)P(F)P(E \mid A)P(D \mid B,F)P(G \mid E,D)P(C \mid D)} \\
+&= \frac{P(B)P(F)P(D \mid B,F)P(G \mid E,D)P(C \mid D) \sum\limits_A P(A)P(E \mid A)}
+{P(B)P(F)\sum\limits_A P(A)P(E \mid A) \sum\limits_D P(D \mid B,F)P(G \mid E,D)P(C \mid D)} \\
+&= \frac{P(D \mid B,F)P(G \mid E,D)P(C \mid D) }
+{\sum\limits_D P(D \mid B,F)P(G \mid E,D)P(C \mid D)}
+\end{aligned}
+$$
+
+$$
+\Rightarrow P(D \mid A,B,C,E,F,G) = P(D \mid \text{MB}(D))
+$$
+
+## Data Analysis Problem 3: Learning Bayesian networks from protein data
+
+read in the data provided in sachs.data.txt
+
+```{r read data}
+sachs.data = read.table(file = "sachs.data.txt", header = TRUE)
+```
+
+### (a) learn structure
+
+```{r, warning=FALSE, fig.height=9, warning=FALSE}
+library(bnlearn)
+
+# hill-climbing method
+bn.hc = hc(sachs.data)
+
+# tabu-climbing method
+bn.tabu = tabu(sachs.data)
+
+# plotting and highlighting differences
+par(mfrow = c(2, 1))
+differences = c("Raf", "Mek", "PIP2", "PIP3", "Erk", "Akt")
+plot(bn.hc, main = "Hill-Climbing", highlight = differences)
+plot(bn.tabu, main = "Tabu-search", highlight = differences, 
+     sub = expression(
+         "side by side comparison of the Bayesian network structures learned by
+         hill-climbing and tabu-search algorithms. 
+         Differences between the networks are highlighted in red"
+       )
+     )
+```
+
+We can see that there are differences between the networks. The directions of multiple edges are reversed between the upper and the lower graph.
+
+
+
+### (b) Estimate conditional densities
+```{r}
+hc.fit = bn.fit(bn.hc, sachs.data)
+tabu.fit = bn.fit(bn.tabu, sachs.data)
+
+for (x in c("Plcg", "PIP3")){
+  cat(hc.fit[[x]]$node, "hill-climbing", "\n")
+  print(hc.fit[[x]]$coefficients)
+  cat("\n")
+  cat(tabu.fit[[x]]$node, "tabu-search", "\n")
+  print(tabu.fit[[x]]$coefficients)
+  cat("\n")
+}
+
+
+```
+
+We can see that the densities between of the node "Plgc" is the same for both networks but there is a difference between the  densities for node "PIP3". This can be explained by the different structures of the networks. While "Plgc" has the same Markov Blanket in both networks, "PIP3" has one parent and one child in the hill-climbing graph and no parents and 2 children in the tabu search graph.
+
+
+```{r}
+arcs = boot.strength(sachs.data, R = 400, algorithm = "hc")
+bn.av = averaged.network(arcs, threshold = 0.75)
+plot(bn.av, main = "Bootstrap network with Hill-climb")
+
+av.fit = bn.fit(bn.av, sachs.data)
+
+for (x in c("Plcg", "PIP3")){
+  cat(av.fit[[x]]$node, "\n")
+  print(av.fit[[x]]$coefficients)
+  cat("\n")
+}
+```
+
+
