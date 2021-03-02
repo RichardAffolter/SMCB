@@ -1,5 +1,5 @@
 ---
-title: "Exercise 1"
+title: "Project 1"
 author: "Richard Affolter"
 date: "25 02 2021"
 output: pdf_document
@@ -31,7 +31,16 @@ $$
 $$
 \begin{aligned}
 \sum\limits_C P(A,B,C) = \sum\limits_C P(A \mid C)\ P(B \mid C)\ P(C) \\
-\text{in general this does not factorize to the product } P(A)\ P(B)
+\end{aligned}
+$$
+in general this does not factorize to the product  $P(A)\ P(B)$.  
+We can make this more visible by using Bayes rules:
+
+$$
+\begin{aligned}
+\sum\limits_C P(A,B,C) &= \sum\limits_C P(A \mid C)\ P(B \mid C)\ P(C) \\
+&= \sum\limits_C \frac{P(C \mid A)\ P(A)}{P(C)}\frac{P(C \mid B)\ P(B)}{P(C)}\ P(C)\\
+&= P(A)\ P(B) \sum\limits_C \frac{P(C \mid A)\ P(C \mid B)}{P(C)}
 \end{aligned}
 $$
 
