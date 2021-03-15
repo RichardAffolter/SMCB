@@ -1,0 +1,269 @@
+---
+title: "Project 3"
+author: "Richard Affolter"
+date: "11 3 2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+## Problem  6: Hidden Markov Models
+
+According to slide 18 the HMM is parametrized by 
+
+- The initial state probabilities, which can take up K different values, but since they have to sum up to 1 (they are probabilities) we have K-1 degrees of freedom.
+
+- The transition probabilities, where we have aa K$\cdot$K matrix, but since total the probability of jumping from a state i into a state j must sum up to 1,  we have K$\cdot$(K-1) degrees of freedom.
+
+- The emission probabilities, where we have K$\cdot$M matrix, but since the probability of emitting something (from any state i) must sum up to 1 we have K$\cdot$(M-1) degrees of freedom.
+
+In total we have K-1 + K$\cdot$(K-1) + K$\cdot$(M-1) = K$\cdot$(K+M-1)-1 possible unique parameters.
+
+
+## Problem 7: Predicting protein secondary structure using HMMs
+
+```{r load libraries, warning=FALSE, message=FALSE}
+library(dplyr)
+```
+
+
+### (a) Read `proteins_train.tsv`, `proteins_test.tsv` and `proteins_new.tsv` into the memory and store each in a data.frame
+
+```{r, load data}
+p_train = read.table(file = 'proteins_train.tsv', sep = '\t', header = FALSE)
+p_test = read.table(file = 'proteins_test.tsv', sep = '\t', header = FALSE)
+p_new = read.table(file = 'proteins_new.tsv2', sep = '\t', header = FALSE)
+```
+
+
+### (b) Estimate the vector of initial state probabilities $I$, the matrix of transition probabilities $T$ and the matrix for emission probabilities $E$.
+
+```{r, copy ss and aa}
+
+# copy section from viterbi.r
+unique.ss <- c("B", "C", "E", "G", "H", "I", "S", "T")
+unique.aa <- c("A", "C", "D", "E", "F", "G", "H", "I",
+               "K", "L", "M", "N", "P", "Q", "R", "S",
+               "T", "U", "V", "W", "X", "Y")
+```
+```{r, calculate inital states}
+get_I = function(df){
+  I = rep(0, length(unique.ss))
+  names(I) = unique.ss
+  
+  for(i in 1:dim(p_train)[1]){
+    letter = substr(df[i,3],1,1)
+    I[letter] = I[letter] + 1
+  }
+
+  return(I = I/sum(I))
+}
+I = get_I(p_train)
+```
+
+```{r, calculate transition}
+get_T = function(df){
+  T = matrix(0,nrow = length(unique.ss), ncol = length(unique.ss))
+  rownames(T) = unique.ss
+  colnames(T) = unique.ss
+  
+  for(i in 1:dim(df)[1]){
+    sec_struc = strsplit(df[i,3], split = "") %>% unlist()
+    for(j in 1:(length(sec_struc)-1)){
+      T[sec_struc[j],sec_struc[j+1]] = T[sec_struc[j],sec_struc[j+1]] + 1
+    }
+  }
+  return(T = T/rowSums(T))
+}
+T = get_T(p_train) 
+```
+
+```{r, calculate emmission}
+get_E = function(df){
+  E = matrix(0,nrow = length(unique.ss), ncol = length(unique.aa))
+  rownames(E) = unique.ss
+  colnames(E) = unique.aa
+  
+  for(i in 1:dim(df)[1]){
+    sec_struc = strsplit(df[i,3], split = "") %>% unlist()
+    aa_seq = strsplit(df[i,2], split = "") %>% unlist()
+    for(j in 1:length(sec_struc)){
+      E[sec_struc[j],aa_seq[j]] = E[sec_struc[j],aa_seq[j]] + 1
+    }
+  }
+  return(E = E/rowSums(E))
+}
+E = get_E(p_train)
+```
+```{r print EIT}
+print(E)
+print(T)
+print(I)
+```
+
+
+### (c)Estimate the stationary distribution $\pi$ of the Markov chain.
+
+We know from slide 9 that $\pi$ is the solution of $\pi^t = \pi^tT$.
+If we transpose we get an eigenvalue problem:
+$$
+(\pi^t)^\intercal = (\pi^tT)^\intercal = T^\intercal(\pi^t)^\intercal
+$$
+So we are looking for the eigenvector of $T^\intercal$ with eigenvalue 1.
+```{r, calculate stationary distribution, warning=FALSE, message=FALSE}
+library(dplyr)
+ev = eigen(t(T))
+# find the eigenvalue with value 1
+pos = which(near(ev$values,1))
+
+#normalize
+Pi = ev$vectors[,pos]/sum(ev$vectors[,pos])
+names(Pi) = unique.ss
+```
+```{r, print Pi}
+print(Pi)
+```
+
+
+### (d) Predict the latent state sequence $Z$ of a protein’s amino acid sequence $X$ using the Viterbi algorithm
+
+```{r, run the viterbi for the 3 data sets}
+source("viterbi.r")
+get_prediction = function(x){
+  df = data.frame(AminoAcids = x$V2)
+  tmp = viterbi(E=log(E), Tr = log(T), I=log(I),p=df)
+  return(tmp$PredictedStructure)
+}
+
+p_train$PredictedStructure = get_prediction(p_train)
+p_test$PredictedStructure = get_prediction(p_test)
+p_new$PredictedStructure = get_prediction(p_new)
+```
+```{r save p_new as .tsv}
+#  save p_new as a new tsv
+write.table(p_new, file = "proteins_new.tsv", sep = "\t",
+            col.names = FALSE, row.names = FALSE)
+```
+
+
+### Estimate confidence intervals for $I$, $E$ and $T$ with bootstrapping
+
+
+```{r, bootstrap, eval=TRUE}
+# initialize lists to store the intermediate results of each bootstrap
+I_list = list()
+T_list = list()
+E_list = list()
+
+num_row = dim(p_train)[1]
+num_boot = 1000
+set.seed(123)
+# resample the data and get T,E,I
+for(i in 1:num_boot){
+  resample_idx = sample(num_row,num_row, replace = TRUE)
+  resampled_data = p_train[resample_idx,]
+  I_list[[i]] = get_I(resampled_data)
+  T_list[[i]] = get_T(resampled_data)
+  E_list[[i]] = get_E(resampled_data)
+}
+
+# transform to 3D array
+T_simp = simplify2array(T_list)
+E_simp = simplify2array(E_list)
+I_simp = simplify2array(I_list)
+```
+
+```{r, get CI for each entry}
+# get CI for T
+T_simp[is.na(T_simp)] = 0 # set Na to 0
+dim1 = dim(T_simp)[1]
+dim2 = dim(T_simp)[2]
+T_CI = array(rep(0,dim1*dim2*2),dim = c(dim1,dim2,2),
+             dimnames = list(unique.ss, unique.ss,
+                             c("lower_bound", "upper_bound")))
+
+for(i in 1:dim1){
+  for(j in 1:dim2){
+    T_simp[i,j,] %>% quantile(probs = c(0.025, 0.975))-> CI
+    T_CI[i,j,] = CI
+  }
+}
+
+
+# get CI for E
+E_simp[is.na(E_simp)] = 0 # set Na to 0
+dim1 = dim(E_simp)[1]
+dim2 = dim(E_simp)[2]
+E_CI = array(rep(0,dim1*dim2*2),dim = c(dim1,dim2,2),
+             dimnames = list(unique.ss, unique.aa,
+                             c("lower_bound", "upper_bound")))
+
+for(i in 1:dim1){
+  for(j in 1:dim2){
+    E_simp[i,j,] %>% quantile(probs = c(0.025, 0.975))-> CI
+    E_CI[i,j,] = CI
+  }
+}
+
+# get CI for I
+I_simp[is.na(I_simp)] = 0 # set Na to 0
+dim1 = dim(I_simp)[1]
+I_CI = array(rep(0,dim1*2),dim = c(dim1,2),
+             dimnames = list(unique.ss,
+                             c("lower_bound", "upper_bound")))
+
+for(i in 1:dim1){
+  I_simp[i,] %>% quantile(probs = c(0.025, 0.975))-> CI
+  I_CI[i,] = CI
+}
+```
+```{r, print the CIs}
+print(E_CI)
+print(T_CI)
+print(I_CI)
+```
+
+
+### (f) Compute the accuracy of the predicted secondary structure for the data.frame of `proteins_test.tsv`
+
+```{r, calculate accuracies}
+accuracies = rep(0, nrow(p_test))
+for(i in 1:nrow(p_test)){
+  for(j in 1:nchar(p_test$V3[i])){
+    if(substr(p_test$V3[i],j,j) == substr(p_test$PredictedStructure[i],j,j)){
+      accuracies[i] = accuracies[i]+1
+    }
+  } 
+  accuracies[i] = accuracies[i]/nchar(p_test$V3[i])
+}
+summary(accuracies)
+```
+The mean accuracy over all sequences is `r mean(accuracies)`.
+
+### (g) Randomly guess secondary structures and compare to the Viterbi
+
+For the probability of the random guessing the stationary distribution is used.
+```{r, randomly guess the accuracies}
+random_accuracies = rep(0, nrow(p_test))
+for(i in 1:nrow(p_test)){
+  random_structure = sample(unique.ss, size=nchar(p_test$V3[i]),
+                            replace = TRUE,prob = Pi)
+  random_structure = paste(random_structure, collapse = "")
+  for(j in 1:nchar(p_test$V3[i])){
+    if(substr(p_test$V3[i],j,j) == substr(random_structure,j,j)){
+      random_accuracies[i] = random_accuracies[i]+1
+    }
+  } 
+  random_accuracies[i] = random_accuracies[i]/nchar(p_test$V3[i])
+}
+summary(random_accuracies)
+```
+The mean accuracy of the random sequences over all sequences is `r mean(random_accuracies)`.
+
+```{r, plot the accuracies}
+par(mfrow=c(1,2))
+boxplot(accuracies, main = "Viterbi prediction", ylim = c(0, 1))
+boxplot(random_accuracies, main = "Random prediction", ylim = c(0,1))
+```
+We can see that the Viterbi algorithm performs better than random guessing.
