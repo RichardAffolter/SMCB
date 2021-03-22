@@ -33,7 +33,7 @@ library(dplyr)
 ```{r, load data}
 p_train = read.table(file = 'proteins_train.tsv', sep = '\t', header = FALSE)
 p_test = read.table(file = 'proteins_test.tsv', sep = '\t', header = FALSE)
-p_new = read.table(file = 'proteins_new.tsv2', sep = '\t', header = FALSE)
+p_new = read.table(file = 'proteins_new.tsv', sep = '\t', header = FALSE)
 ```
 
 
@@ -147,7 +147,7 @@ write.table(p_new, file = "proteins_new.tsv", sep = "\t",
 ```
 
 
-### Estimate confidence intervals for $I$, $E$ and $T$ with bootstrapping
+### (e) Estimate confidence intervals for $I$, $E$ and $T$ with bootstrapping
 
 
 ```{r, bootstrap, eval=TRUE}

@@ -52,6 +52,7 @@ $$
 &= 1- P(C_1 \mid D_2)
 \end{aligned}
 $$
+\newpage
 
 To update the mixture weights:
 
@@ -85,19 +86,13 @@ N = dim(data)[2]
 ```
 
 
-```{r, eval=FALSE}
-trials = c(5,9,8,4,7)
-N = 5
-L = 10
-```
-
 
 ### (b) Start with random priors (mixture weights)  (e.g., $\lambda$= (0.5, 0.5)), and probabilities for heads (= 1) for each of the coins.
 
 ```{r, parameter_initialization, eval=FALSE}
 #initialize the weights and the probabilites for heads
-lambda_init = c(0.5,0.5)
-theta_init = c(0.6,0.5)
+lambda = c(0.5,0.5)
+theta = c(0.6,0.5)
 ```
 
 
@@ -131,7 +126,6 @@ get_responsibility = function(i,j){
 
 # fill a matrix (2xN) with all responsibilites
 responsibilites = outer(1:2, 1:N, FUN = Vectorize(get_responsibility))
-
 
 # compute the log of the observed likelihood like on slide 18
 part1 = sum(rowSums(responsibilites)*log(lambda)) # fist part of the sum
@@ -176,6 +170,7 @@ EM = function(data, theta, lambda){
   
   progress = 1
   
+  # loop while we do progress until max number of iterations
   while(progress > 1e-7 && iteration < 1e6){
     
   #----------- E-step -----------------------------------
@@ -206,7 +201,6 @@ EM = function(data, theta, lambda){
   # fill a matrix (2xN) with all responsibilites
   responsibilites = outer(1:2, 1:N, FUN = Vectorize(get_responsibility))
   
-  
   # compute the log of the observed likelihood like on slide 18
   part1 = sum(rowSums(responsibilites)*log(lambda)) # fist part of the sum
   part2 = sum(responsibilites * log_cond_prob) # second part of the sum
@@ -234,10 +228,10 @@ EM = function(data, theta, lambda){
 
 We can start the EM several times independently with different priors and choose the result with the highest likelihood
 
-```{r}
+```{r, multiple runs of EM}
 set.seed(123)
 
-best_likelihood = -1000
+best_likelihood = -Inf
 
 # run the algorithm 100 times
 for(i in 1:100){
@@ -258,7 +252,7 @@ for(i in 1:100){
 
 ### (f) Print the probability of heads for each coin and the mixture weights $\lambda$. Plot a heatmap of the responsibilities. How many trials belong to each coin?
 
-```{r}
+```{r, text answer 1}
 for(i in 1:2){
   cat(
     paste0("Probability of heads for coin", i, ": ",
@@ -273,10 +267,17 @@ So we have $\theta_1$ = `r round(best_result$theta[1],6)` and  $\theta_2$ = `r r
 The mixture weights are $\lambda_1$ = `r round(best_result$lambda[1],6)` and $\lambda_2 = 1-\lambda_1$ = `r round(best_result$lambda[2],6)`
 
 
-```{r, warning=FALSE, message=FALSE}
+```{r,heatmap, warning=FALSE, message=FALSE}
 library(ComplexHeatmap)
 rownames(best_result$gamma) = paste("coin",1:2)
+colnames(best_result$gamma) = rep('',N)
+for(i in seq(0,N,25)){
+  colnames(best_result$gamma)[i] = i
+}
+colnames(best_result$gamma)[1]=1
 Heatmap(best_result$gamma,
+        #col = RColorBrewer::brewer.pal(name = "OrRd", n = 9),
+        #col = colorRampPalette(c("black", "white"),10),
         #width = unit(10, "cm"),
         cluster_rows = FALSE,
         cluster_columns = FALSE,
@@ -285,4 +286,12 @@ Heatmap(best_result$gamma,
         #row_title = "coins",
         name = "responsibilities")
 ```
+
+```{r, text answer 2}
+cat(sum(best_result$gamma[1,]>0.5),
+    "trials belong to coin 1 and",
+    sum(best_result$gamma[2,]>0.5),
+    "trials belong to coin 2.")
+```
+
 
