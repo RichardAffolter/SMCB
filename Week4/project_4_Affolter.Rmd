@@ -185,3 +185,4 @@ text(5, -40, labels = "ATP HMM profile", col = "red")
 ```
 
 
+We can see in the plot that we have a nice linear separation between the two models. Sequences with a positive $q$ have a higher probability to belong to the GTP binding protein family than to belong to the ATPase family. For sequences with a negative $q$ it is the other way around. Since for no sequence  $q$ is close to zero we can clearly decide for each protein.
