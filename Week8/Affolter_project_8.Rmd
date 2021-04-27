@@ -1,0 +1,474 @@
+---
+title: "Project 8"
+author: "Richard Affolter"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  pdf_document: default
+header-includes: 
+  - \usepackage{tikz}
+  - \usetikzlibrary{positioning}
+  - \usepackage{subfig}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Difficulty of this project: **3**
+
+## Problem 20: Classical NEMs
+\begin{figure}
+\centering
+\captionsetup[subfigure]{labelformat=empty}
+\subfloat[(a)]  
+{
+\begin{tikzpicture}[node distance=22mm, thick,
+round/.style = {draw, circle},
+box/.style ={rectangle, draw=black}] 
+\node[round] (S1)                     {$S_1$};
+\node[round] (S3) [below left of=S1]  {$S_3$};
+\node[round] (S4) [below right of=S1] {$S_4$};
+\node[round] (S2) [above right of=S4] {$S_2$};
+\node[round] (S5) [below right of=S2] {$S_5$};
+
+\node[box]   (E3) [below =1.5cm of S4] {$E_3$};
+\node[box]   (E2) [left =0.8cm of E3]  {$E_2$};
+\node[box]   (E1) [left =0.25cm of E2] {$E_1$};
+\node[box]   (E4) [right=0.25cm of E3] {$E_4$};
+\node[box]   (E6) [right=0.25cm of E4] {$E_6$};
+\node[box]   (E5) [right=0.25cm of E6] {$E_2$};
+
+\draw[->] (S1) -- (S3);
+\draw[->] (S3) -- (S4);
+\draw[->] (S1) -- (S4);
+\draw[->] (S4) -- (S5);
+\draw[->] (S2) -- (S5);
+\draw[->] (S3) to [out=320,in=210,looseness=1.0] (S5);
+\draw[->, red] (S1) to [out=0,in=150,looseness=0.5] (S5);
+
+\draw[->] (S3) -- (E1);
+\draw[->] (S3) -- (E2);
+\draw[->] (S4) -- (E3);
+\draw[->] (S2) -- (E4);
+\draw[->] (S2) -- (E6);
+\draw[->] (S5) -- (E5);
+\end{tikzpicture}
+}
+\hfill
+\subfloat[(b)]  
+{
+\begin{tikzpicture}[node distance=22mm, thick,
+round/.style = {draw, circle},
+box/.style ={rectangle, draw=black}] 
+\node[round] (S1)                     {$S_1$};
+\node[round] (S3) [below left of=S1]  {$S_3$};
+\node[round] (S4) [below right of=S1] {$S_4$};
+\node[round] (S2) [above right of=S4] {$S_2$};
+\node[round] (S5) [below right of=S2] {$S_5$};
+
+\node[box]   (E3) [below =1.5cm of S4] {$E_3$};
+\node[box]   (E2) [left =0.8cm of E3]  {$E_2$};
+\node[box]   (E1) [left =0.25cm of E2] {$E_1$};
+\node[box]   (E4) [right=0.25cm of E3] {$E_4$};
+\node[box]   (E6) [right=0.25cm of E4] {$E_6$};
+\node[box]   (E5) [right=0.25cm of E6] {$E_2$};
+
+\draw[->] (S3) -- (S1);
+\draw[->] (S3) -- (S4);
+\draw[->] (S1) -- (S4);
+\draw[->] (S4) -- (S5);
+\draw[->] (S2) -- (S5);
+\draw[->] (S3) to [out=320,in=210,looseness=1.0] (S5);
+\draw[->, red] (S1) to [out=0,in=150,looseness=0.5] (S5);
+
+\draw[->] (S1) -- (E1);
+\draw[->] (S1) -- (E2);
+\draw[->] (S4) -- (E3);
+\draw[->] (S2) -- (E4);
+\draw[->] (S2) -- (E6);
+\draw[->] (S5) -- (E5);
+\end{tikzpicture}
+}
+
+\end{figure}
+
+### 1. For each model, identify the transitive edges and define the corresponding adjacency matrices $\Phi$ and $\Theta$, which represent the signalling pathways and the E-gene attachments. Determine the corresponding expected effect patterns (F).
+
+For both models the transitive edges are added in red.
+
+For model (a) we have the following adjacency matrix $\Phi$ and E-gene attachments $\Theta$
+```{r, determine Phi Theta and F for model a, message=FALSE, warning=FALSE}
+library(mnem)
+Phi_a_open = rbind(
+  c(1,0,1,1,0),
+  c(0,1,0,0,1),
+  c(0,0,1,1,1),
+  c(0,0,0,1,1),
+  c(0,0,0,0,1)
+  )
+
+# compute transitive closure
+Phi_a = transitive.closure(Phi_a_open)
+
+colnames(Phi_a) = rownames(Phi_a) = paste0("S",1:5)
+Phi_a
+
+Theta_a = rbind(
+  c(0,0,0,0,0,0),
+  c(0,0,0,1,0,1),
+  c(1,1,0,0,0,0),
+  c(0,0,1,0,0,0),
+  c(0,0,0,0,1,0)
+)
+colnames(Theta_a) = paste0("E",1:6)
+rownames(Theta_a) = paste0("S",1:5)
+
+Theta_a
+```
+By multiplying $\Phi$ and $\Theta$ we get F.
+
+```{r, calculate F_a}
+F_a = Phi_a %*% Theta_a
+F_a
+```
+
+For model (b) we have the following adjacency matrix $\Phi$, E-gene attachments $\Theta$ and therefore F:
+```{r, determine Phi Theta and F for model b}
+Phi_b_open = rbind(
+  c(1,0,0,1,0),
+  c(0,1,0,0,1),
+  c(1,0,1,1,1),
+  c(0,0,0,1,1),
+  c(0,0,0,0,1)
+  )
+
+# compute transitive closure
+Phi_b = transitive.closure(Phi_b_open)
+
+colnames(Phi_b) = rownames(Phi_b) = paste0("S",1:5)
+Phi_b
+
+Theta_b = rbind(
+  c(1,1,0,0,0,0),
+  c(0,0,0,1,0,1),
+  c(0,0,0,0,0,0),
+  c(0,0,1,0,0,0),
+  c(0,0,0,0,1,0)
+)
+colnames(Theta_b) = paste0("E",1:6)
+rownames(Theta_b) = paste0("S",1:5)
+
+Theta_b
+
+F_b = Phi_b %*% Theta_b
+F_b
+```
+
+### 2. Assuming **no noise**, determine the discrete data $D_1$ and $D_2$ from both models. Given only the data, can you tell apart the two models?
+
+With perfect data the discrete data is equal to the transposed expected effect patterns ($F_a^T = D_1$, $F_b^T = D_2$). We can quickly see that the data is the same, and we therefore cannot tell the two models apart.
+```{r, check for equality}
+D_1 = t(F_a)
+D_2 = t(F_b)
+
+D_1
+D_2
+all.equal(D_1, D_2)
+```
+
+### 3. Use the `mnem` package for this question: Take $D_1$ and $D_2$ from the previous question. For each model, calculate the marginal log-likelihood ratio (network score) given the data by setting the false positive rate to be 5% and the false negative rate to be 1%.
+```{r, calculate loglik, warning=FALSE,message=FALSE}
+score_1 = mnem::scoreAdj(D = D_1, adj = Phi_a, method = "disc",
+                         marginal = TRUE, fpfn = c(0.05, 0.01),
+                         logtype = exp(1))$score
+
+score_2 = mnem::scoreAdj(D = D_2, adj = Phi_b, method = "disc",
+                         marginal = TRUE, fpfn = c(0.05, 0.01),
+                         logtype = exp(1))$score
+
+cat("network score for D_1: ", score_1, "\n")
+cat("network score for D_2: ", score_2, "\n")
+```
+As we can see both networks have the same score.
+
+## Problem 21: Hidden Markov NEMs
+
+\begin{figure}
+\centering
+\captionsetup[subfigure]{labelformat=empty}
+\subfloat[$u$]  
+{
+\begin{tikzpicture}[node distance=20mm, thick,
+round/.style = {draw, circle}]
+
+\node[round] (S1)                     {$S_1$};
+\node[round] (S2) [below left of=S1]  {$S_2$};
+\node[round] (S3) [below right of=S1] {$S_3$};
+\node[round] (S4) [below right of=S2] {$S_4$};
+
+\draw[->] (S1) -- (S2);
+\draw[->] (S1) -- (S3);
+\draw[->] (S2) -- (S3);
+\draw[->] (S2) -- (S4);
+\draw[->] (S3) -- (S4);
+\draw[->, red] (S1) -- (S4);
+\end{tikzpicture}
+}
+\hfill
+\subfloat[$v_1$]  
+{
+\begin{tikzpicture}[node distance=20mm, thick,
+round/.style = {draw, circle}]
+
+\node[round] (S1)                     {$S_1$};
+\node[round] (S2) [below left of=S1]  {$S_2$};
+\node[round] (S3) [below right of=S1] {$S_3$};
+\node[round] (S4) [below right of=S2] {$S_4$};
+
+\draw[->] (S1) -- (S2);
+\draw[->] (S1) -- (S3);
+\draw[->] (S2) -- (S3);
+\draw[->] (S2) -- (S4);
+\draw[->, red] (S1) -- (S4);
+\end{tikzpicture}
+}
+\hfill
+\subfloat[$v_2$]  
+{
+\begin{tikzpicture}[node distance=20mm, thick,
+round/.style = {draw, circle}]
+
+\node[round] (S2)               {$S_2$};
+\node[round] (S4) [right of=S2] {$S_4$};
+\node[round] (S3) [below of=S1] {$S_2$};
+\node[round] (S1) [right of=S3] {$S_1$};
+
+\draw[->] (S2) -- (S3);
+\draw[->] (S2) -- (S1);
+\draw[->] (S4) -- (S1);
+\end{tikzpicture}
+}
+\end{figure}
+
+The transitive edges are added in red.
+
+### Using the definitions for HM-NEMs from the lecture, compute the transition probabilities from $G_t = u$ to $G_{t+1} \in \{v_1, v_2\}$ for different smoothness parameter $\lambda \in \{0.1, . . . , 0.9\}$.
+```{r, save u v1 v2}
+# construct the transitively closed graph adj matrices
+u_open = rbind(
+  c(1,1,1,0),
+  c(0,1,1,1),
+  c(0,0,1,1),
+  c(0,0,0,1)
+)
+
+u = transitive.closure(u_open)
+colnames(u)= rownames(u) = paste0("S",1:4)
+u
+
+v_1_open = rbind(
+  c(1,1,1,0),
+  c(0,1,1,1),
+  c(0,0,1,0),
+  c(0,0,0,1)
+)
+
+v_1 = transitive.closure(v_1_open)
+colnames(v_1)= rownames(v_1) = paste0("S",1:4)
+v_1
+
+v_2_open = rbind(
+  c(1,0,0,0),
+  c(1,1,1,0),
+  c(1,0,1,0),
+  c(1,0,0,1)
+)
+
+v_2 = transitive.closure(v_2_open)
+colnames(v_2)= rownames(v_2) = paste0("S",1:4)
+v_2
+```
+
+```{r, calculate transition probabilities, warning=FALSE, message=FALSE}
+library(dplyr)
+get_unnormalized_trans_prob = function(u, v, lambda){
+  suv = sum(u != v)
+  return((1-lambda)^(suv)*lambda)
+}
+
+get_normalizing_constant = function(lambda){
+  model_space = mnem:::enumerate.models(4, verbose = FALSE, trans.close = TRUE)
+  sapply(model_space, get_unnormalized_trans_prob, u=u, lambda=lambda) %>%
+    sum() %>% return()
+}
+lambdas = seq(0.1, 0.9, by=0.1)
+C_us = sapply(lambdas, get_normalizing_constant)
+
+Tuv_1 = sapply(lambdas, get_unnormalized_trans_prob, u=u, v=v_1)/C_us
+Tuv_2 = sapply(lambdas, get_unnormalized_trans_prob, u=u, v=v_2)/C_us
+
+toprint = rbind(lambdas, Tuv_1, Tuv_2)
+rownames(toprint) = c("lambda", "Transition u -> v1", "Transition u -> v2")
+toprint
+```
+
+### 2. Plot the transition probabilities for $v_1$ and $v_2$ as a function of $\lambda$. Describe the transition probabilities as a function of $\lambda$.
+```{r, plotting}
+plot(lambdas, Tuv_1, xlab = expression(lambda), ylab = expression(T[uv[1]]),
+     type = "b", col = "red", main = "transition probability", pch=16)
+plot(lambdas, Tuv_2, xlab = expression(lambda), ylab = expression(T[uv[2]]),
+     type = "b", col = "blue", main = "transition probability", pch=16)
+```
+We can see that the transition probability $T_{uv_1}$ increases with $\lambda$ up to a certain point. The opposite effect is happening with  $T_{uv_2}$, which decreases with $\lambda$. This can be explained by considering that network $v_1$ is very close to $u$, there is only one edge missing. On the contrary Network $v_2$ is very different to $u$. This means that $s_{uv_1}=1$ and $s_{uv_2}=8$. If $\lambda$ is close to 1, then $(1-\lambda)^{s_{uv}}$ trends to zero very fast. So a high smoothness parameter rewards transitions to similar networks and punishes transitions to diverse networks.
+
+
+## Problem 22: Mixture NEMs
+
+\begin{figure}
+\centering
+\captionsetup[subfigure]{labelformat=empty}
+\subfloat[$F_1$]  
+{
+\begin{tikzpicture}[node distance=22mm, thick,
+round/.style = {draw, circle},
+box/.style ={rectangle, draw=black}] 
+
+\node[round] (S1)                     {$S_1$};
+\node[box]   (E1) [below left of=S1]  {$E_1$};
+\node[round] (S2) [below of=S1]       {$S_2$};
+\node[box]   (E2) [below of=S2]       {$E_2$};
+
+\draw[->] (S1) -- (E1);
+\draw[->] (S1) -- (S2);
+\draw[->] (S2) -- (E2);
+\end{tikzpicture}
+}
+\hspace{2cm}
+\subfloat[$F_2$]  
+{
+\begin{tikzpicture}[node distance=22mm, thick,
+round/.style = {draw, circle},
+box/.style ={rectangle, draw=black}] 
+
+\node[round] (S2)                     {$S_2$};
+\node[box]   (E1) [below left of=S1]  {$E_1$};
+\node[round] (S1) [below of=S2]       {$S_1$};
+\node[box]   (E2) [below of=S1]       {$E_2$};
+
+\draw[->] (S2) -- (E1);
+\draw[->] (S2) -- (S1);
+\draw[->] (S1) -- (E2);
+\end{tikzpicture}
+}
+\end{figure}
+
+Given are two NEMs $F_1$ and $F_2$ with two S-genes $\{S_1, S_2\}$ and two E-genes $\{E_1, E_2\}$. The data contains four cells $\{C_1, C_2, C_3, C_4\}$. $\{C_1, C_3\}$ are perturbed by a knock-down of $S_1$, and $\{C_2, C_3, C_4\}$
+are perturbed by a knock-down of $S_2$.
+
+### 1. Determine the the cellular perturbation map $\rho$, where $\rho_{ic}=1$ if cell $c$ is perturbed by a knock-down of S-gene $i$.
+  
+```{r, compute rho}
+rho = rbind(
+  c(1,0,1,0),
+  c(0,1,1,1)
+)
+colnames(rho) = paste0("C",1:4)
+rownames(rho) = paste0("S",1:2)
+rho
+```
+
+
+###  2. Assume that $\{C_1, C_2\}$ are generated from $F_1$ and $\{C_3, C_4\}$ are generated from $F_2$, compute the noiseless log odds matrix $R$, where $R_{jc} > 0$ means that the perturbation on cell $c$ has an effect on E-gene $j$:
+
+
+### (a) For each component $k$, compute the expected effect pattern $(\rho^T\phi_k\theta_k)^T$. Replace all non-zeros by 1.
+
+
+```{r, compute effect pattern}
+phi_1 = rbind(
+  c(1,1),
+  c(0,1)
+  )
+colnames(phi_1) = rownames(phi_1) = paste0("S",1:2)
+
+phi_2 = rbind(
+  c(1,0),
+  c(1,1)
+  )
+
+colnames(phi_1) = rownames(phi_1) = paste0("S",1:2)
+colnames(phi_2) = rownames(phi_2) = paste0("S",1:2)
+
+theta_1 = rbind(
+  c(1,0),
+  c(0,1)
+)
+
+theta_2 = rbind(
+  c(0,1),
+  c(1,0)
+)
+
+colnames(theta_1) = paste0("S",1:2)
+rownames(theta_1) = paste0("E", 1:2)
+
+colnames(theta_2) = paste0("S",1:2)
+rownames(theta_2) = paste0("E", 1:2)
+
+# compute expected effect pattern
+expected_1 = (t(rho) %*% phi_1 %*% theta_1) %>% t()
+expected_2 = (t(rho) %*% phi_2 %*% theta_2) %>% t()
+
+rownames(expected_1) = rownames(theta_1)
+rownames(expected_2) = rownames(theta_2)
+
+# Replace all non-zeros by 1
+expected_1[which(expected_1 != 0)] = 1
+expected_2[which(expected_2 != 0)] = 1
+
+expected_1
+expected_2
+```
+
+
+
+### (b) Based on the component assignment for each cell, extract the corresponding column from the expected effect patterns computed above and put it into $R$. Replace all zeros by -1.
+
+
+```{r, compute R}
+R = cbind(expected_1[,c("C1","C2")], expected_2[,c("C3","C4")])
+
+# Replace all zeros by -1
+R[which(R == 0)] = -1
+R
+```
+
+
+### 3. Take $R$ from the previous question. Given the vector of mixture weights $\pi = (0.44, 0.56)$, calculate the responsibilities $\Gamma$. Then, update the mixture weights. 
+
+```{r, calculate mixture weights and update responsibilites}
+# calculate the log likelihood ratio
+L_1 = t(expected_1) %*% R
+L_2 = t(expected_2) %*% R
+
+# calculate mixture weights
+Lk = list(L_1, L_2)
+pi = c(k1=0.44, k2=0.56)
+
+get_unnormalized_weight = function(pi, L){
+  return(pi * exp(diag(L)))
+}
+
+# get unnormalized, transposed gamma
+gamma = mapply(get_unnormalized_weight, pi, Lk)
+
+# normalize and transpose to get gamma
+gamma = (gamma/rowSums(gamma)) %>% t()
+
+gamma
+
+#update the mixture weights
+pi = rowSums(gamma) / (sum(gamma))
+
+pi
+```
+

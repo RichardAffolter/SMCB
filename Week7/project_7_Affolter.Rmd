@@ -197,6 +197,8 @@ To summarize we need $4K^2 + K$ summation steps, which can be represented as $(N
 ### (c) If you store all the messages, what is the complexity of computing all marginal probability distributions $X_1$, $X_2$, $X_3$, $X_4$, and $X_5$? How about the general case, with a chain of length $N$ where each node can assume $K$ values? Assume that storing and multiplying is free, so that only summation counts for the complexity
 
 To compute all marginal probability distributions we need to compute all forward and all backward messages. For a chain we have $N-1$ forward and $N-1$ backward messages. The normalising constant can be computed at any node, so we have again $K$ summations. So in total we get $2(N-1)K^2 + K \in \mathcal{O}(NK^2)$.
+For the specific case of $X_1-X_5$ we have of course the same solution with $N=5$.
+
 
 ## Problem 19(data analysis): Message passing on a chain
 
