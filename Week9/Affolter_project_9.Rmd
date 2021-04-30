@@ -1,0 +1,199 @@
+---
+title: "Project 9"
+author: "Richard Affolter"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  pdf_document: default
+header-includes: 
+  - \usepackage{tikz}
+  - \usetikzlibrary{positioning}
+  - \usepackage{subfig}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+Difficulty of this project: **2**
+
+## Problem 23: d-separation
+
+For the following Bayesian network
+
+\begin{figure}
+\centering
+\captionsetup[subfigure]{labelformat=empty}
+\subfloat[Figure 1]  
+{
+\begin{tikzpicture}[node distance=20mm, thick,
+round/.style = {draw, circle},
+box/.style ={rectangle, draw=black}] 
+\node[round] (A)                     {$A$};
+\node[round] (B) [right of=A]  {$B$};
+\node[round] (C) [below of=A] {$C$};
+\node[round] (D) [below of=B] {$D$};
+\node[round] (F) [right of=D] {$F$};
+\node[round] (E) [below of=F] {$E$};
+\node[round] (G) [left=2.3 cm of E] {$G$};
+
+\draw[->] (A) -- (C);
+\draw[->] (A) -- (D);
+\draw[->] (B) -- (D);
+\draw[->] (B) -- (F);
+\draw[->] (C) -- (G);
+\draw[->] (D) -- (G);
+\draw[->] (F) -- (E);
+
+\end{tikzpicture}
+}
+\end{figure}
+
+```{r, include=FALSE}
+library(bnlearn)
+bn = model2network("[A][C|A][D|A:B][B][F|B][E|F][G|C:D]")
+dsep(bn,"A","G",c("C","D"))
+```
+
+### (i) Write down all the variables that are d-separated from $A$ given $\{C,D\}$.
+
+- $A \perp G \mid \{C,D\}$
+
+### (ii) Which of the following statements are true? If false, please explain why
+
+ - (a) B is conditionally independent of C given D  
+**FALSE**, B is not d-separated from C given D. We have an active path C-A-D-B.  
+Also we have
+$$
+\begin{aligned}
+P(B,C|D) &= \frac{P(B,C,D)}{P(D)}\\
+&= \frac{\sum\limits_A P(A) \cdot P(B) \cdot P(C|A) \cdot P(D|A,B)}
+{\sum\limits_A \sum\limits_B P(D|A,B)}
+\end{aligned}
+$$
+  in general this does not factorize to the product $P(B|D) \cdot P(C|D)$.
+
+- (b) G is conditionally independent of E given D                            
+**FALSE** we have an active path G-C-A-D-B-F-E
+
+- (c) C is conditionally independent of F given A.  
+**TRUE** C is d-separated from F given A.
+
+- (d) C is conditionally independent of E given its Markov blanket (of C).  
+**TRUE** we have $MB(C) = \{A,D,G\}$, adn C is d-sepatated from E given $\{A,D,G\}$.
+
+
+## Problem 24: Testing for marginal correlation
+
+The covariance between two random variables $X$ and $Y$ captures their linear relationship, and is defined as $\mathrm{Cov}(X, Y ) := \mathbb{E} \left[(X - \mathbb{E}[X])(Y - \mathbb{E}[Y])\right]$. Their correlation $\rho_{X,Y} := \frac{\mathrm{Cov}(X,Y)}{\sqrt{\mathrm{Var}X \mathrm{Var}Y}}$ is
+merely their covariance scaled by the product of their respective standard deviations. Note that for
+a multivariate normal distribution, uncorrelated variables are independent. However, it is important
+to keep in mind that this implication does not hold in general
+
+
+\begin{figure}
+\centering
+\captionsetup[subfigure]{labelformat=empty}
+\subfloat[Figure 2]  
+{
+\begin{tikzpicture}[node distance=18mm, thick,
+round/.style = {draw, circle},
+box/.style ={rectangle, draw=black}] 
+\node[round] (A)                     {$A$};
+\node[round] (B) [right of=A]  {$B$};
+\node[round] (C) [below of=A] {$C$};
+\node[round] (D) [below of=C] {$D$};
+\node[round] (F) [right of=B] {$F$};
+\node[round] (E) [below of=B] {$E$};
+
+\draw[->] (A) -- (C);
+\draw[->] (C) -- (D);
+\draw[->] (B) -- (C);
+\draw[->] (B) -- (E);
+
+\end{tikzpicture}
+}
+\end{figure}
+
+### Using the data from `MVN_DAG.rds`, display the observations of $A$ and $B$ in a scatterplot. What does the plot suggest about their (marginal) correlation? Does it agree with Figure 2? Use the function `cor.test()` to test the null hypothesis of no correlation between $A$ and $B$. What is your conclusion?
+
+```{r, scatterplot, fig.width=6, fig.height=6}
+data = readRDS("MVN_DAG.rds")
+#par(pty="s")
+plot(data$A, data$B, xlab = "A", ylab = "B", main = "scatterplot of A and B",
+     xlim = c(-3.5,3.5), ylim = c(-3.5,3.5), pch=20)
+```
+The scatterplot suggests that there is no marginal covariance and therefore also no marginal correlation between A and B. This is also in agreement with Figure 2, since there is also marginal independence between A and B.
+
+We can test this null-hypothesis (no correlation between A and B) with `cor.test()`:
+```{r, correlation test}
+cor.test(data$A, data$B)
+```
+We can see that our p-value is over the significance level $\alpha=0.05$. Therefore we cannot reject the null-hypothesis.
+
+So my conclusion is that A and B are (marginally) independent.
+
+
+## Problem 25: Testing for partial correlation
+The partial correlation between two random variables $X$ and $Y$ given a random variable $Z$ is
+$$
+\rho_{X,Y|Z}=\frac{\rho_{X,Y} - \rho_{X,Z}\rho_{Y,Z}}
+{\sqrt{(1- \rho_{X,Z}^2)(1-\rho_{Y,Z}^2)}}
+$$
+Alternatively, the partial correlation $\rho_{X,Y|Z}$ equals the correlation between residuals from the linear regressions of $X$ on $Z$, and $Y$ on $Z$, respectively. We will now compute the partial correlation
+$\rho_{A,B|C}$ to assess the association between $A$ and $B$ given $C$ as follows:
+
+- Linearly regress $A$ on $C$ (that is, with $A$ as the response variable and $C$ as the explanatory
+variable). Compute and store the residuals.
+
+```{r, linear regression A on C}
+lmFit = lm(A ~ C, data = data)
+res_AC= residuals(lmFit)
+```
+
+- Linearly regress $B$ on $C$. Compute and store the residuals.
+```{r, linear regression B on C}
+lmFit = lm(B ~ C, data = data)
+res_BC= residuals(lmFit)
+```
+
+- Plot the residuals of $A$ (regressed on $C$) against the residuals of $B$ (regressed on $C$). What do you see?
+```{r, plot residuals, fig.width=6, fig.height=6}
+plot(res_AC, res_BC, xlab = "residuals A~C", ylab = "residuals B~C", main = "residuals of A (regressed on C) \n against the residuals of B (regressed on C)",
+     xlim = c(-2.7,2.7), ylim = c(-2.7,2.7), pch=16)
+```
+There seems to be a negative correlation between he residuals of $A$ (regressed on $C$) against the residuals of $B$ (regressed on $C$). Higher residuals of $A$ tend to be lower residuals of $B$. This indicates that the partial correlation $\rho_{A,B|C}$ is negative as well.
+
+- Use the function `cor.test()` to test the null hypothesis of no correlation between the residuals of $A$ (regressed on $C$) and the residuals of $B$ (regressed on $C$). What is your conclusion? Does
+this agree with your expectation based on the underlying DAG in Figure 2?
+
+```{r, test correlation between residuals}
+cor.test(res_AC, res_BC)
+```
+We can see that our p-value is smaller than the significance level $\alpha=0.05$. Therefore we reject the null-hypothesis. There is a negative correlation between the residuals. This leads to the conclusion, that there is a partial correlation $\rho_{A,B|C}$. This is also in agreement with figure 2. We can see that $A$ is not d-separated from $B$ given $C$.
+
+## Problem 26: Running the PC algorithm
+
+Install and load the `R` package `pcalg`. Use the function `pc()` to run the PC algorithm on the data in `MVN_DAG.rds`, and plot the result. Does the algorithm successfully learn the structure of the data-generating graph in Figure 2? How is the result affected by the significance
+level $\alpha$ for the conditional independence tests?
+
+```{r, PC algorithm, warning=FALSE, message=FALSE}
+library(pcalg)
+C = cor(data)
+n = dim(data)[1]
+pc.fit = pc(suffStat = list(C=C,n=n), indepTest = gaussCItest, alpha = 0.05,
+   labels = colnames(data))
+
+plot(pc.fit, main = "Estimated CPDAG")
+```
+We can see that the algorithm successfully learns the structure of the data-generating graph in figure 2. The only discrepancy is that the edge between B and E is now undirected.
+
+```{r, test different significance levels}
+# popular levels of significance
+alphas = c(0.1, 0.05, 0.01, 0.005, 0.001, 0.0001)
+
+plot_list=sapply(alphas, FUN=pc, suffStat = list(C=C,n=n), indepTest = gaussCItest, labels = colnames(data))
+
+par(mfrow=c(1,2))
+invisible(mapply(function(x,y) plot(x, main=bquote(alpha==.(y))),x=plot_list,y=alphas))
+```
+We see that for very small significance levels $\alpha$ the position of node $D$ gets unstable. The relationship between the other nodes stays stable.
+
