@@ -78,7 +78,7 @@ $$
 **TRUE** C is d-separated from F given A.
 
 - (d) C is conditionally independent of E given its Markov blanket (of C).  
-**TRUE** we have $MB(C) = \{A,D,G\}$, adn C is d-sepatated from E given $\{A,D,G\}$.
+**TRUE** we have $MB(C) = \{A,D,G\}$, and C is d-separated from E given $\{A,D,G\}$.
 
 
 ## Problem 24: Testing for marginal correlation
@@ -117,17 +117,17 @@ box/.style ={rectangle, draw=black}]
 
 ```{r, scatterplot, fig.width=6, fig.height=6}
 data = readRDS("MVN_DAG.rds")
-#par(pty="s")
 plot(data$A, data$B, xlab = "A", ylab = "B", main = "scatterplot of A and B",
      xlim = c(-3.5,3.5), ylim = c(-3.5,3.5), pch=20)
 ```
+
 The scatterplot suggests that there is no marginal covariance and therefore also no marginal correlation between A and B. This is also in agreement with Figure 2, since there is also marginal independence between A and B.
 
 We can test this null-hypothesis (no correlation between A and B) with `cor.test()`:
 ```{r, correlation test}
 cor.test(data$A, data$B)
 ```
-We can see that our p-value is over the significance level $\alpha=0.05$. Therefore we cannot reject the null-hypothesis.
+We can see that our p-value $(0.8401)$ is over the significance level $\alpha=0.05$. Therefore we cannot reject the null-hypothesis.
 
 So my conclusion is that A and B are (marginally) independent.
 
@@ -157,10 +157,13 @@ res_BC= residuals(lmFit)
 
 - Plot the residuals of $A$ (regressed on $C$) against the residuals of $B$ (regressed on $C$). What do you see?
 ```{r, plot residuals, fig.width=6, fig.height=6}
-plot(res_AC, res_BC, xlab = "residuals A~C", ylab = "residuals B~C", main = "residuals of A (regressed on C) \n against the residuals of B (regressed on C)",
+plot(res_AC, res_BC, xlab = "residuals A~C", ylab = "residuals B~C", 
+     main = "residuals of A (regressed on C) \n 
+     against the residuals of B (regressed on C)",
      xlim = c(-2.7,2.7), ylim = c(-2.7,2.7), pch=16)
 ```
-There seems to be a negative correlation between he residuals of $A$ (regressed on $C$) against the residuals of $B$ (regressed on $C$). Higher residuals of $A$ tend to be lower residuals of $B$. This indicates that the partial correlation $\rho_{A,B|C}$ is negative as well.
+
+There seems to be a negative correlation between the residuals of $A$ (regressed on $C$) against the residuals of $B$ (regressed on $C$). Higher residuals of $A$ tend to be lower residuals of $B$. This indicates that the partial correlation $\rho_{A,B|C}$ is negative as well.
 
 - Use the function `cor.test()` to test the null hypothesis of no correlation between the residuals of $A$ (regressed on $C$) and the residuals of $B$ (regressed on $C$). What is your conclusion? Does
 this agree with your expectation based on the underlying DAG in Figure 2?
@@ -168,7 +171,7 @@ this agree with your expectation based on the underlying DAG in Figure 2?
 ```{r, test correlation between residuals}
 cor.test(res_AC, res_BC)
 ```
-We can see that our p-value is smaller than the significance level $\alpha=0.05$. Therefore we reject the null-hypothesis. There is a negative correlation between the residuals. This leads to the conclusion, that there is a partial correlation $\rho_{A,B|C}$. This is also in agreement with figure 2. We can see that $A$ is not d-separated from $B$ given $C$.
+We can see that our p-value $(6.6\cdot 10^{-13})$ is smaller than the significance level $\alpha=0.05$. Therefore we reject the null-hypothesis. There is a negative correlation between the residuals. This leads to the conclusion, that there is a partial correlation $\rho_{A,B|C}$. This is also in agreement with figure 2. We can see that $A$ is not d-separated from $B$ given $C$.
 
 ## Problem 26: Running the PC algorithm
 
@@ -180,20 +183,26 @@ library(pcalg)
 C = cor(data)
 n = dim(data)[1]
 pc.fit = pc(suffStat = list(C=C,n=n), indepTest = gaussCItest, alpha = 0.05,
-   labels = colnames(data))
+            labels = colnames(data))
 
 plot(pc.fit, main = "Estimated CPDAG")
 ```
 We can see that the algorithm successfully learns the structure of the data-generating graph in figure 2. The only discrepancy is that the edge between B and E is now undirected.
 
 ```{r, test different significance levels}
-# popular levels of significance
-alphas = c(0.1, 0.05, 0.01, 0.005, 0.001, 0.0001)
+# popular levels of significance and very high (0.5) and very low (10^-18)
+alphas = c(0.1, 0.05, 0.01, 0.005, 0.001, 0.0001, 0.5, 1e-18)
 
-plot_list=sapply(alphas, FUN=pc, suffStat = list(C=C,n=n), indepTest = gaussCItest, labels = colnames(data))
+plot_list=sapply(alphas, FUN=pc, suffStat = list(C=C,n=n),
+                 indepTest = gaussCItest, labels = colnames(data))
 
+plot_fun = function(x,y){
+  plot(x, main=bquote(alpha==.(y)))
+}
 par(mfrow=c(1,2))
-invisible(mapply(function(x,y) plot(x, main=bquote(alpha==.(y))),x=plot_list,y=alphas))
+
+# invisible to supress the console message
+invisible(mapply(plot_fun, x=plot_list, y=alphas))
 ```
-We see that for very small significance levels $\alpha$ the position of node $D$ gets unstable. The relationship between the other nodes stays stable.
+We see that for the popular significance levels $\alpha$ $(0.1-0.005)$ we get the same graphs. If we decrease $\alpha$ even further then the edge between node $D$ and $C$ gets unstable. It first flips direction and then gets lost. The relationship between the other nodes stays stable. If we take a very high $\alpha$ like $0.5$ then we include false edges. If we take a very low $\alpha$ like $10^{-18}$ then we lose true edges. So in general we can conclude that there is a sweet spot of $\alpha$ where the estimated graph is very close to the true graph. Too high $\alpha$ risks including false positives, and too low $\alpha$ risks excluding true positives (creating false negatives). 
 
